@@ -2,17 +2,21 @@ name: World AI Cloud APK Builder Engine
 
 on:
   repository_dispatch:
-    types: [trigger-build]
+    types: [trigger-build, build-apk]
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout Code Repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Setup Java Development Kit (JDK 17)
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
         java-version: '17'
@@ -28,7 +32,7 @@ jobs:
         CLIENT_PAYLOAD: ${{ toJson(github.event.client_payload) }}
       run: |
         mkdir -p assets
-        echo '$CLIENT_PAYLOAD' > assets/app_config.json
+        echo "$CLIENT_PAYLOAD" > assets/app_config.json
         echo "Successfully injected Three-Dots dynamic settings configuration!"
 
     - name: Compile Real Production APK
@@ -37,7 +41,20 @@ jobs:
         flutter build apk --release
 
     - name: Upload Generated APK To Secure Artifact Storage
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: world-ai-generated-app
         path: build/app/outputs/flutter-apk/app-release.apk
+
+    - name: Create or Update GitHub Release with Direct APK Download
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v1.0.0
+        name: World AI Enterprise Production APK v1.0.0
+        body: |
+          ### Production APK Artifact
+          Generated automatically by World AI Enterprise Pipeline.
+          Direct Download: [app-release.apk](https://github.com/noushadkhan02585-coder/world-ai-app-builder/releases/download/v1.0.0/app-release.apk)
+        files: build/app/outputs/flutter-apk/app-release.apk
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
